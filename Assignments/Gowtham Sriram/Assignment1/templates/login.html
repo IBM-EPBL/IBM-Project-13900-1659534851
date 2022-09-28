@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>JOBPORTAL | LOGIN</title>
+        <!-- css stylesheet -->
+        <link rel="stylesheet" href="css/style.css">
+    </head>
+
+    <body>
+        <!-- bootstrap navbar -->
+        <nav class="navbar sticky-top navbar-expand-lg navbar-light">
+            <div class="container-fluid">
+                <div class="row donate-sponsor">
+                    <a type="button" class="btn btn-success mr-1" id="donate" href="/logout">LOGOUT</a>
+                    <a type="button" class="btn btn-warning mr-1" id="sponsor" href="register">REGISTER</a>
+                    <a type="button" class="btn btn-primary mr-1" id="sponsor" href="display">MY JOBS</a>
+                </div>
+            </div>
+        </nav>
+        <!-- navbar ends -->
+        
+        <!-- Login form -->
+        <div class="login text-center mt-5"> 
+            <h2> Login Form </h2>
+            <form action="/login" method="post">
+            <div class="msg">{{ msg }}</div>
+                <input type="text" name="username" placeholder="Enter Your Username"  id="username" required></br></br>
+                <input type="password" name="password" placeholder="Enter Your Password" id="password" required></br></br>
+                </br></br>
+            <button type="submit" id="button" class="btn btn-primary"> Login </button>
+            </form>
+        </div>
+        <!--Register form -->
+        <div class="note mt-3 text-center"> 
+            <p> Don't have an account yet? Click here to <a href="register"> Register Now </a> </p>
+        </div>
+    </body>
+</html>

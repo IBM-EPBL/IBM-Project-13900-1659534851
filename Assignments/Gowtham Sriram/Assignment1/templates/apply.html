@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>JOBPORTAL | APPLY</title>
+        <!-- css stylesheet -->
+        <link rel="stylesheet" href="css/style.css">
+    </head>
+    <body>
+        <!-- bootstrap navbar -->
+        <nav class="navbar sticky-top navbar-expand-lg navbar-light">
+            <div class="container-fluid">
+                <div class="row donate-sponsor">
+                    <a type="button" class="btn btn-success mr-1" id="donate" href="/logout">LOGOUT</a>
+                    <a type="button" class="btn btn-warning mr-1" id="sponsor" href="register">REGISTER</a>
+                    <a type="button" class="btn btn-primary mr-1" id="sponsor" href="display">MY JOBS</a>
+                </div>
+            </div>
+        </nav>
+        <!-- navbar ends -->
+        
+        <!-- Login form -->
+        <div class="login text-center mt-5"> 
+            <h2>Apply Now</h2>
+            <div class="msg">{{ msg }}</div>
+                <form action="/apply" method="post" class="mt-3">
+                    <input type="text" placeholder="fullname" id="fullname"> </br></br>
+                    <input type="text" name="username" placeholder="Enter Your Username"  id="username" required></br></br>
+                    <input type="email" name="email" placeholder="Enter Your email"  id="email" required></br></br>
+                    <input type="text" name="qualification" placeholder="Enter Your Qualification"  id="qualification" required></br></br>
+                    <input type="text" name="skills" placeholder="Enter Your skills" id="skills" required></br></br>
+                    <select name ="s">
+                        <option value ="1"> 1</option>
+                        <option value ="2"> 2</option>
+                        <option value ="3"> 3</option>
+                    </select>
+                    </br></br>
+                    <button type="submit" id="button" class="btn btn-primary"> Submit</button>
+                </form>
+        </div>
+
+        <div class="note mt-3 text-center">
+            <p> click here to go to dashboard <a href="dashboard">Dashboard! </a> </p>
+        </div>
+    </body>
+</html>
