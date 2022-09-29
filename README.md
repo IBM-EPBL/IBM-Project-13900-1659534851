@@ -5,7 +5,7 @@ Plasma Donor Application - Cloud Application Development
 PSG College of Technology
 
 Group Members
-# Darshan Sasikumar
-# Gowtham Sriram
-# Kevin Nelson
-# Pranavh Harish
+  Darshan Sasikumar
+  Gowtham Sriram
+  Kevin Nelson
+  Pranavh Harish
