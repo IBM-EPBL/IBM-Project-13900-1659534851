@@ -1,0 +1,6 @@
+from python
+workdir /Assignment4
+copy . .
+run pip install -r requirements.txt
+cmd ["python","app.py"]
+expose 5000
