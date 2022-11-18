@@ -1,0 +1,4 @@
+flask
+flask_mail
+markupsafe
+ibm_db
