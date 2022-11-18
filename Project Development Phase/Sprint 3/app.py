@@ -1,410 +1,307 @@
-import os
-from flask import Flask, render_template, url_for, redirect, session, request, flash
-import re
-from datetime import *
-import ibm_db
+from flask import Flask,render_template,request,url_for,redirect
+from flask_mail import *
+from markupsafe import escape
 
-from mailjet_rest import Client
+import ibm_db
+conn = ibm_db.connect("DATABASE=bludb;HOSTNAME=2f3279a5-73d1-4859-88f0-a6c3e6b4b907.c3n41cmd0nqnrk39u98g.databases.appdomain.cloud;PORT=30756;SECURITY=SSL;SSLServerCertificate=DigiCertGlobalRootCA.crt;UID=blk20068;PWD=LsEEBW71f9uXFNsf",'','')
+
 
 app = Flask(__name__)
 
-#mailjet
-api_key = 'e40c383c11bccb2164a329ceb5ab0427'
-api_secret = 'b991822038153f622b0aa0ae8ce20d4f'
-mailjet = Client(auth=(api_key, api_secret), version='v3.1')
-
-conn = ibm_db.connect("DATABASE=bludb;  HOSTNAME=815fa4db-dc03-4c70-869a-a9cc13f33084.bs2io90l08kqb1od8lcg.databases.appdomain.cloud;PORT=30376;  SECURITY=SSL;  SSLServerCertificate=DigiCertGlobalRootCA.crt;  UID=tbx03863;  PWD=zYmHIpR01SXSL2YV", '', '')
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html')      # index - home page
 
-#----------------------------NORMAL USER ROUTES-----------------------------------
+@app.route('/recipregistration')
+def recipregistration():
+  return render_template('recipregistration.html')   ## recipient signup page uh
 
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    global userid
-    msg = ""
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-        sql = "SELECT * FROM users WHERE username=? AND password=?"
-        stmt = ibm_db.prepare(conn, sql)
-        ibm_db.bind_param(stmt, 1, username)
-        ibm_db.bind_param(stmt, 2, password)
-        ibm_db.execute(stmt)
-        account = ibm_db.fetch_assoc(stmt)
-        print(account)
-        if account:
-            session['Loggedin'] = True
-            session['id'] = account['USERNAME']
-            userid = account['USERNAME']
-            session['username'] = account['USERNAME']
-            return render_template('dashboard.html', msg=username)
-        else:
-            msg = "Invalid login credentials!"
-    return render_template('login.html', msg=msg)
+@app.route('/recipientlogin')
+def recipientlogin():
+  return render_template('reclogin.html')      ## recipt login page
 
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    msg = "Please fill out the form."
-    if request.method == 'POST':
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
-        sql = "SELECT * FROM users WHERE username=?"
-        stmt = ibm_db.prepare(conn, sql)
-        ibm_db.bind_param(stmt, 1, username)
-        ibm_db.execute(stmt)
-        account = ibm_db.fetch_assoc(stmt)
-        print(account)
-        if account:
-            msg = "Username already exists!"
-        elif not re.match(r'[^@]+@[^@]+\.[^@]+', email):
-            msg = "Invalid email address!"
-        elif not re.match(r'[A-Za-z0-9]+', username):
-            msg = "Username must contain only letters and numbers!"
-        else:
-            insertsql = "INSERT INTO users VALUES(?,?,?)"
-            prepstmt = ibm_db.prepare(conn, insertsql)
-            ibm_db.bind_param(prepstmt, 1, username)
-            ibm_db.bind_param(prepstmt, 2, email)
-            ibm_db.bind_param(prepstmt, 3, password)
-            ibm_db.execute(prepstmt)
 
-            data = {
-                'Messages': [
-                    {
-                        "From": {
-                            "Email": "19i209@psgtech.ac.in",
-                            "Name": "Darshan"
-                        },
-                        "To": [
-                        {
-                            "Email": email,
-                            "Name": username
-                        }
-                    ],
-                        "Subject": "Registration Verification.",
-                        "TextPart": "Congratulations! Welcome new user!",
-                        "HTMLPart": "<h1>Plasma App Registration Verification</h1>''<p>Congratulations! Welcome new user</p>''<br><br>''<b>Plasma Donor App Team</b>!</p>!",
-                    }
-                ]
-            }
-            result = mailjet.send.create(data=data)
-            
-            msg = "You have successfully created an account!"
-            flash(msg)
-            return redirect(url_for('index'))    
-    return render_template('register.html', msg=msg)
+@app.route('/recipientrec',methods = ['POST', 'GET'])
+def recipientrec():
+  if request.method == 'POST':
 
-@app.route('/dashboard')
-def dashboard():
-    return render_template('dashboard.html', msg=userid)
+    fname = request.form['fname']
+    lname = request.form['lname']
+    dob = request.form['dob']
+    email = request.form['email']
+    mnumb = request.form['mnumb']
+    gender = request.form['gender']
+    address = request.form['address']
+    pin = request.form['pin']
 
-@app.route('/newdonor')
-def newdonor():
-    username = userid
-    sql = "SELECT username FROM donor WHERE username=?"
+    sql = "SELECT * FROM recipientrec WHERE fname =?"
     stmt = ibm_db.prepare(conn, sql)
-    ibm_db.bind_param(stmt, 1, username)
+    ibm_db.bind_param(stmt,1,fname)
     ibm_db.execute(stmt)
     account = ibm_db.fetch_assoc(stmt)
-    print("reached account", account)
+
+
     if account:
-        msg = "You have already registered as a donor! Donor registration is only 1 time!"
-        flash(msg)
-        return redirect(url_for('dashboard'))
-    return render_template('newdonor.html')
-
-@app.route('/newrequest')
-def newrequest():
-    return render_template('newrequest.html')
-
-@app.route('/regdonor', methods=['GET', 'POST'])
-def regdonor():
-    msg = ""
-    if request.method == "POST":
-        username = userid
-        name = request.form['name']
-        age = request.form['age']
-        gender = request.form['gender']
-        phno = request.form['phone']
-        addr = request.form['address']
-        city = request.form['city']
-        state = request.form['state']
-        bgp = request.form['bloodgp']
-        don = request.form['don']
-        if int(age)<18:
-            msg="You have to be an adult to donate plasma!"
-
-        else:
-            insertsql = "INSERT INTO donor VALUES(?,?,?,?,?,?,?,?,?,?)"
-            prepstmt = ibm_db.prepare(conn, insertsql)
-            ibm_db.bind_param(prepstmt, 1, username)
-            ibm_db.bind_param(prepstmt, 2, name)
-            ibm_db.bind_param(prepstmt, 3, age)
-            ibm_db.bind_param(prepstmt, 4, gender)
-            ibm_db.bind_param(prepstmt, 5, phno)
-            ibm_db.bind_param(prepstmt, 6, addr)
-            ibm_db.bind_param(prepstmt, 7, city)
-            ibm_db.bind_param(prepstmt, 8, state)
-            ibm_db.bind_param(prepstmt, 9, bgp)
-            ibm_db.bind_param(prepstmt, 10, don)
-            ibm_db.execute(prepstmt)
-            msg = "You have successfully applied as a donor."
-            print("executed insert")
-            
-    flash(msg)
-    return redirect(url_for('dashboard'))
-
-@app.route('/regrequest', methods=['GET', 'POST'])
-def regrequest():
-    msg = ""
-    if request.method == "POST":
-        username = userid
-        pname = request.form['pname']
-        print(userid, "\t", session['id'], "pname = ", pname)
-        sql = "SELECT * FROM requests WHERE username=? AND pname=?" #patient's name = pname
-        stmt = ibm_db.prepare(conn, sql)
-        ibm_db.bind_param(stmt, 1, username)
-        ibm_db.bind_param(stmt, 2, pname)
-        ibm_db.execute(stmt)
-        account = ibm_db.fetch_assoc(stmt)
-        print("reached account here for pname", account)
-        if account:
-            msg = "Register for a patient only once!"
-            flash(msg)
-            return redirect(url_for('dashboard'))
-        
-        phno = request.form['phone']
-        paddr = request.form['paddress']
-        city = request.form['city']
-        state = request.form['state']
-        bgp = request.form['bloodgp']
-
-        insertsql = "INSERT INTO requests VALUES(?,?,?,?,?,?,?)"
-        prepstmt = ibm_db.prepare(conn, insertsql)
-        ibm_db.bind_param(prepstmt, 1, username)
-        ibm_db.bind_param(prepstmt, 2, pname)
-        ibm_db.bind_param(prepstmt, 3, phno)
-        ibm_db.bind_param(prepstmt, 4, paddr)
-        ibm_db.bind_param(prepstmt, 5, city)
-        ibm_db.bind_param(prepstmt, 6, state)
-        ibm_db.bind_param(prepstmt, 7, bgp)
-        print("prep insert - "+username+"--"+pname+"--"+bgp)
-        ibm_db.execute(prepstmt)
-        msg = "You have successfully requested plasma."
-        print("executed insert")        
-    flash(msg)
-    return redirect(url_for('dashboard'))
-
-@app.route('/pastrequests')
-def pastrequests():
-    username = userid
-    flag = 0
-    data = []
-    sql = "SELECT pname,phone,paddress,city,state,blood FROM requests WHERE username=?"
-    stmt = ibm_db.prepare(conn, sql)
-    ibm_db.bind_param(stmt, 1, username)
-    ibm_db.execute(stmt)
-    request = ibm_db.fetch_tuple(stmt)
-    while request != False:
-        flag = 1 #atleast 1 match is found
-        data.append(request)
-        request = ibm_db.fetch_tuple(stmt)
-    if not flag:
-        msg = "You have made 0 requests!"
-        flash(msg)
-        return redirect(url_for('dashboard'))
+       return render_template('reclogin.html', msg="Already your account exists, please try to log in")
     else:
-        print("No of requests = ", len(data))
-        data = tuple(data)
-        headings = ("Patient's Name", "Emergency Contact", "Patient's Address", "City", "State", "Blood Group Requested", "Options")
-        return render_template('userrequests.html', msg=userid, data=data, headings=headings)
-
-@app.route('/adminrequests')
-def adminrequests():
-    username = userid
-    sql = "SELECT blood FROM donor WHERE username=?"
-    stmt = ibm_db.prepare(conn, sql)
-    ibm_db.bind_param(stmt, 1, username)
-    ibm_db.execute(stmt)
-    mybgp = ibm_db.fetch_tuple(stmt)
-    print("My bgp is: ", mybgp)
-    if not mybgp:
-        msg = "You have not registered as a donor yet! Please register first to view other's requests!"
-        flash(msg)
-        return redirect(url_for('dashboard'))
+     insert_sql = "INSERT INTO recipientrec VALUES (?,?,?,?,?,?,?,?)"
+     prep_stmt = ibm_db.prepare(conn, insert_sql)
+     ibm_db.bind_param(prep_stmt, 1, fname)
+     ibm_db.bind_param(prep_stmt, 2, lname)
+     ibm_db.bind_param(prep_stmt, 3, dob)
+     ibm_db.bind_param(prep_stmt, 4, email)
+     ibm_db.bind_param(prep_stmt, 5, mnumb)
+     ibm_db.bind_param(prep_stmt, 6, gender)
+     ibm_db.bind_param(prep_stmt, 7, address)
+     ibm_db.bind_param(prep_stmt, 8, pin)
+     ibm_db.execute(prep_stmt)
     
-    flag = 0
-    data = []
-    sql = "SELECT pname,phone,state,blood FROM approved WHERE blood=?"
+  return render_template('reclogin.html', msg="Account has been created successfully..")
+
+  return "success..."
+
+
+  ### donar crediential
+
+@app.route('/donregistration')
+def donregistration():
+  return render_template('donregistration.html')   ## donar signup page uh
+
+
+@app.route('/donarlogin')
+def donarlogin():
+  return render_template('donlogin.html')      ## donar login page
+
+
+# @app.route('/donarrequest')
+# def donarrequest():
+#   return render_template('donar.html')  ## plasma requesting page
+
+
+## donar details table
+
+@app.route('/donrec',methods = ['POST', 'GET'])
+def donrec():
+  if request.method == 'POST':
+
+    fname = request.form['fname']
+    lname = request.form['lname']
+    dob = request.form['dob']
+    email = request.form['email']
+    mnumb = request.form['mnumb']
+    gender = request.form['gender']
+    address = request.form['address']
+    pin = request.form['pin']
+
+    sql = "SELECT * FROM donarrec WHERE fname =?"
     stmt = ibm_db.prepare(conn, sql)
-    ibm_db.bind_param(stmt, 1, mybgp[0])
+    ibm_db.bind_param(stmt,1,fname)
     ibm_db.execute(stmt)
-    request = ibm_db.fetch_tuple(stmt)
-    while request != False:
-        flag = 1 #atleast 1 match is found
-        data.append(request)
-        request = ibm_db.fetch_tuple(stmt)
-    if not flag:
-        print("My bgp is: ", mybgp)
-        msg = "No requests for your blood group were found!"
-        flash(msg)
-        return redirect(url_for('dashboard'))
+    account = ibm_db.fetch_assoc(stmt)
+
+
+    if account:
+       return render_template('donlogin.html', msg="Already your account exists, please try to log in")
     else:
-        print("No of mybgp requests = ", len(data))
-        data = tuple(data)
-        headings = ("Patient's Name", "Emergency Contact", "State", "Blood Group Requested")
-        return render_template('bgprequests.html', msg=userid, data=data, headings=headings)
+     insert_sql = "INSERT INTO donarrec VALUES (?,?,?,?,?,?,?,?)"
+     prep_stmt = ibm_db.prepare(conn, insert_sql)
+     ibm_db.bind_param(prep_stmt, 1, fname)
+     ibm_db.bind_param(prep_stmt, 2, lname)
+     ibm_db.bind_param(prep_stmt, 3, dob)
+     ibm_db.bind_param(prep_stmt, 4, email)
+     ibm_db.bind_param(prep_stmt, 5, mnumb)
+     ibm_db.bind_param(prep_stmt, 6, gender)
+     ibm_db.bind_param(prep_stmt, 7, address)
+     ibm_db.bind_param(prep_stmt, 8, pin)
+     ibm_db.execute(prep_stmt)
+    
+  return render_template('donlogin.html', msg="Account has been created successfully..")
 
-@app.route('/profile')
-def profile():
-    username = userid
-    dictprofile = {'Username':'', 'Email ID': '', 'Is Donor?': 'NO'}
-    dictprofile['Username'] = username
+  return "success..."
 
-    sql = "SELECT email FROM users WHERE username=?"
+
+@app.route('/admin')
+def admin():
+  return render_template('admin.html')
+
+@app.route('/donar')
+def donar():
+  return render_template('donar.html')
+
+
+## donar registering for donation
+@app.route('/giveplasma',methods = ['POST', 'GET'])
+def giveplasma():
+  if request.method == 'POST':
+
+    name = request.form['name']
+    age = request.form['age']
+    gender = request.form['gender']
+    mnumb = request.form['mnumb']
+    email = request.form['email']
+    city = request.form['city']
+    address = request.form['address']
+    bloodgroup = request.form['bloodgroup']
+    issue = request.form['issue']
+    lastbd = request.form['lastbd']
+    slot = request.form['slot']
+
+    sql = "SELECT * FROM donar WHERE name =?"
     stmt = ibm_db.prepare(conn, sql)
-    ibm_db.bind_param(stmt, 1, username)
+    ibm_db.bind_param(stmt,1,name)
     ibm_db.execute(stmt)
-    dictprofile['Email ID'] = ibm_db.fetch_tuple(stmt)[0]
+    account = ibm_db.fetch_assoc(stmt)
+
+    if account:
+      return render_template('donlogin.html', msg="You are already a member, please login using your details")
+    else:
+      insert_sql = "INSERT INTO donar VALUES (?,?,?,?,?,?,?,?,?,?,?)"
+      prep_stmt = ibm_db.prepare(conn, insert_sql)
+      ibm_db.bind_param(prep_stmt, 1, name)
+      ibm_db.bind_param(prep_stmt, 2, age)
+      ibm_db.bind_param(prep_stmt, 3, gender)
+      ibm_db.bind_param(prep_stmt, 4, mnumb)
+      ibm_db.bind_param(prep_stmt, 5, email)
+      ibm_db.bind_param(prep_stmt, 6, city)
+      ibm_db.bind_param(prep_stmt, 7, address)
+      ibm_db.bind_param(prep_stmt, 8, bloodgroup)
+      ibm_db.bind_param(prep_stmt, 9, issue)
+      ibm_db.bind_param(prep_stmt, 10, lastbd)
+      ibm_db.bind_param(prep_stmt, 11, slot)
+      ibm_db.execute(prep_stmt)
     
-    sql = "SELECT * FROM donor WHERE username=?"
+    return render_template('donar.html', msg="Your request for donation is successfully submitted..")
+
+@app.route('/plasmadon')
+def plasmadon():
+  donar = []
+  sql = "SELECT * FROM donar"
+  stmt = ibm_db.exec_immediate(conn, sql)
+  dictionary = ibm_db.fetch_both(stmt)
+  while dictionary != False:
+    # print ("The Name is : ",  dictionary)
+    donar.append(dictionary)
+    dictionary = ibm_db.fetch_both(stmt)
+
+  if donar:
+    return render_template("plasmadon.html", donar = donar)
+
+@app.route('/delete/<name>')
+def delete(name):
+  sql = f"SELECT * FROM donar WHERE name='{escape(name)}'"
+  print(sql)
+  stmt = ibm_db.exec_immediate(conn, sql)
+  donar = ibm_db.fetch_row(stmt)
+  print ("The Name is : ",  donar)
+  if donar:
+    sql = f"DELETE FROM donar WHERE name='{escape(name)}'"
+    print(sql)
+    stmt = ibm_db.exec_immediate(conn, sql)
+
+    donar = []
+    sql = "SELECT * FROM donar"
+    stmt = ibm_db.exec_immediate(conn, sql)
+    dictionary = ibm_db.fetch_both(stmt)
+    while dictionary != False:
+      donar.append(dictionary)
+      dictionary = ibm_db.fetch_both(stmt)
+    if donar:
+      return render_template("plasmadon.html", donar = donar, msg="Accept successfully")
+
+
+  
+  # # while student != False:
+  # #   print ("The Name is : ",  student)
+
+  # print(student)
+  return "success..."
+
+
+@app.route('/mail')
+def mail():
+  return render_template('mail.html')
+
+@app.route('/recipient')
+def recipient():
+  return render_template('recipient.html')
+
+
+@app.route('/takeplasma',methods = ['POST', 'GET'])
+def takeplasma():
+  if request.method == 'POST':
+
+    name = request.form['name']
+    age = request.form['age']
+    gender = request.form['gender']
+    mnumb = request.form['mnumb']
+    proof = request.form['proof']
+    address = request.form['address']
+    plasma = request.form['plasma']
+
+
+    sql = "SELECT * FROM recipient WHERE name =?"
     stmt = ibm_db.prepare(conn, sql)
-    ibm_db.bind_param(stmt, 1, username)
+    ibm_db.bind_param(stmt,1,name)
     ibm_db.execute(stmt)
-    gotprofile = ibm_db.fetch_tuple(stmt)
-    if gotprofile:
-        dictprofile['Is Donor?'] = 'YES'
-        dictprofile['Full Name'] = gotprofile[1]
-        dictprofile['Age'] = gotprofile[2]
-        dictprofile['Gender'] = gotprofile[3]
-        dictprofile['Phone Number'] = gotprofile[4]
-        dictprofile['Address'] = gotprofile[5]
-        dictprofile['City'] = gotprofile[6]
-        dictprofile['State'] = gotprofile[7]
-        dictprofile['Blood Group'] = gotprofile[8]
-        dictprofile['Date of Negative Covid Test'] = gotprofile[9]
-    return render_template('userprofile.html', msg=userid, dictprofile = dictprofile)
+    account = ibm_db.fetch_assoc(stmt)
+
+    if account:
+      return render_template('reclogin.html', msg="You are already a member, please login using your details")
+    else:
+      insert_sql = "INSERT INTO recipient VALUES (?,?,?,?,?,?,?)"
+      prep_stmt = ibm_db.prepare(conn, insert_sql)
+      ibm_db.bind_param(prep_stmt, 1, name)
+      ibm_db.bind_param(prep_stmt, 2, age)
+      ibm_db.bind_param(prep_stmt, 3, gender)
+      ibm_db.bind_param(prep_stmt, 4, mnumb)
+      ibm_db.bind_param(prep_stmt, 5, proof)
+      ibm_db.bind_param(prep_stmt, 6, address)
+      ibm_db.bind_param(prep_stmt, 7, plasma)
+      ibm_db.execute(prep_stmt)
     
+    return render_template('recipient.html', msg="Registration succesfull for Plasma request..")
 
 
-#----------------------------ADMIN ROUTES-----------------------------------
+@app.route('/plasmareq')
+def plasmareq():
+  recipient = []
+  sql = "SELECT * FROM recipient"
+  stmt = ibm_db.exec_immediate(conn, sql)
+  dictionary = ibm_db.fetch_both(stmt)
+  while dictionary != False:
+    # print ("The Name is : ",  dictionary)
+    recipient.append(dictionary)
+    dictionary = ibm_db.fetch_both(stmt)
 
-@app.route('/adminlogin', methods=['GET', 'POST'])
-def adminlogin():
-    global adminid
-    msg = ""
-    if request.method == "POST":
-        username = request.form["username"]
-        password = request.form["password"]
-        sql = "SELECT * FROM admins WHERE username=? AND password=?"
-        stmt = ibm_db.prepare(conn, sql)
-        ibm_db.bind_param(stmt, 1, username)
-        ibm_db.bind_param(stmt, 2, password)
-        ibm_db.execute(stmt)
-        account = ibm_db.fetch_assoc(stmt)
-        print(account)
-        if account:
-            session['Loggedin'] = True
-            session['id'] = account['USERNAME']
-            adminid = account['USERNAME']
-            session['username'] = account['USERNAME']
-            return redirect(url_for('admindashboard'))
-        else:
-            msg = "Invalid admin credentials!"
-    return render_template('adminlogin.html', msg=msg)
+  if recipient:
+    return render_template("plasmareq.html", recipient = recipient)
 
-@app.route('/admindashboard')
-def admindashboard():
-    sql = "SELECT COUNT(*) FROM requests"
+
+@app.route('/delete/<name>')
+def deleted(name):
+  sql = f"SELECT * FROM recipient WHERE name='{escape(name)}'"
+  print(sql)
+  stmt = ibm_db.exec_immediate(conn, sql)
+  recipient = ibm_db.fetch_row(stmt)
+  print ("The Name is : ",  recipient)
+  if recipient:
+    sql = f"DELETE FROM recipient WHERE name='{escape(name)}'"
+    print(sql)
     stmt = ibm_db.exec_immediate(conn, sql)
-    numreqs = ibm_db.fetch_tuple(stmt)[0]
-    
-    sql = "SELECT COUNT(*) FROM donor"
+
+    recipient = []
+    sql = "SELECT * FROM recipient"
     stmt = ibm_db.exec_immediate(conn, sql)
-    numdonors = ibm_db.fetch_tuple(stmt)[0]
+    dictionary = ibm_db.fetch_both(stmt)
+    while dictionary != False:
+      recipient.append(dictionary)
+      dictionary = ibm_db.fetch_both(stmt)
+    if recipient:
+      return render_template("plasmareq.html", recipient = recipient, msg="Accepted successfully")
 
-    sql = "SELECT COUNT(*) FROM approved"
-    stmt = ibm_db.exec_immediate(conn, sql)
-    numappreqs = ibm_db.fetch_tuple(stmt)[0]
+    return "Accepted Successfully"
 
-    if not numreqs: numreqs = 0
-    if not numappreqs: numappreqs = 0
-    if not numdonors: numdonors = 0
-
-    print(numreqs, numdonors, numappreqs)
-    return render_template('admindashboard.html', msg=adminid, numreqs=numreqs, numdonors=numdonors, numappreqs=numappreqs)
-
-@app.route('/approvereq', methods=['POST','GET'])
-def approvereq():
-    if request.method == "POST":
-        bgp = request.form["bgp"]
-        print("Request approved for bgp = ", bgp)
-
-        pname = request.form['pname']
-        phno = request.form['phone']
-        state  = request.form['state']
-
-        sql = "SELECT * FROM approved WHERE pname=? AND blood=? AND phone=?"
-        stmt = ibm_db.prepare(conn, sql)
-        ibm_db.bind_param(stmt, 1, pname)
-        ibm_db.bind_param(stmt, 2, bgp)
-        ibm_db.bind_param(stmt, 3, phno)
-        ibm_db.execute(stmt)
-        appreq = ibm_db.fetch_assoc(stmt)
-        print("reached appreq", appreq)
-        if appreq:
-            msg = "Request already approved! Approve only 1 time!"
-            flash(msg)
-            return redirect(url_for('admindashboard'))
-        
-        insertsql = "INSERT INTO approved VALUES(?,?,?,?)"
-        prepstmt = ibm_db.prepare(conn, insertsql)
-        ibm_db.bind_param(prepstmt, 1, pname)
-        ibm_db.bind_param(prepstmt, 2, phno)
-        ibm_db.bind_param(prepstmt, 3, state)
-        ibm_db.bind_param(prepstmt, 4, bgp)
-        ibm_db.execute(prepstmt)
-        msg = "You have successfully approved a request."
-        print("executed insert")        
-    flash(msg)
-    return redirect(url_for('admindashboard'))
-
-#----------------------------GENERAL LOGOUT ROUTES-----------------------------------
-
-@app.route('/deletereq', methods=['GET','POST'])
-def deletereq():
-    if request.method == 'POST':
-        username = request.form['username']
-        pname = request.form['pname']
-        delsql = "DELETE FROM requests WHERE username=? AND pname=?"
-        prepstmt = ibm_db.prepare(conn, delsql)
-        ibm_db.bind_param(prepstmt, 1, username)
-        ibm_db.bind_param(prepstmt, 2, pname)
-        ibm_db.execute(prepstmt)
-        msg = "You have successfully deleted the request."
-        print("executed delete: ", pname)
-        flash(msg)
-        if 'adminid' in globals():
-            return redirect(url_for('admindashboard'))
-        elif 'userid' in globals():
-            return redirect(url_for('dashboard'))
-
-@app.route('/logout')
-def logout():
-    session.pop('Loggedin', None)
-    session.pop('id', None)
-    session.pop('username', None)
-    if 'userid' in globals():
-        global userid
-        del userid
-    elif 'adminid' in globals():
-        global adminid
-        del adminid
-    return render_template('index.html')
 
 if __name__ == "__main__":
     app.run(debug=True)
